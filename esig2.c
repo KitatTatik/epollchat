@@ -131,17 +131,17 @@ int create_socket(int port_number) {
     server_addr.sin_port = htons(port_number);
     
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if(sockfd == -1) {
+    if (sockfd == -1) {
         err_exit("socket");
     }
     int reuse = 1;
-    if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) == -1) {
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) == -1) {
         err_exit("setsockopt");
     }
-    if(bind(sockfd, (struct sockaddr *)(&server_addr), sizeof(server_addr)) == -1) {
+    if (bind(sockfd, (struct sockaddr *)(&server_addr), sizeof(server_addr)) == -1) {
         err_exit("bind");
     }
-    if(listen(sockfd, 5) == -1) {
+    if (listen(sockfd, 5) == -1) {
         err_exit("listen");
     }
     return sockfd;
@@ -160,13 +160,13 @@ int main(int argc, const char *argv[]) {
     int numcl = 0;
 
     int epollfd = epoll_create1(0);
-    if(epollfd == -1) {
+    if (epollfd == -1) {
         err_exit("epoll_create1");
     }
     struct epoll_event ev;
     ev.data.fd = sockfd;
     ev.events = EPOLLIN ;
-    if(epoll_ctl(epollfd, EPOLL_CTL_ADD, sockfd, &ev) == -1) {
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sockfd, &ev) == -1) {
         err_exit("epoll_ctl1");
     }
     
@@ -198,7 +198,7 @@ int main(int argc, const char *argv[]) {
         int number = epoll_wait(epollfd, events, MAX_EPOLL_EVENTS, -1);
         for (int i = 0; i < number; i++) { 
             int eventfd = events[i].data.fd;
-            if(eventfd == sockfd) {
+            if (eventfd == sockfd) {
                 struct sockaddr_in client_addr;
                 socklen_t client_addr_len = sizeof(client_addr);
                 int connfd = accept(sockfd, (struct sockaddr *)(&client_addr), &client_addr_len);
@@ -206,13 +206,13 @@ int main(int argc, const char *argv[]) {
                 struct epoll_event ev;
                 ev.data.fd = connfd;
                 ev.events = EPOLLIN;
-                if(epoll_ctl(epollfd, EPOLL_CTL_ADD, connfd, &ev) == -1) {
+                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, connfd, &ev) == -1) {
                     err_exit("epoll_ctl2");
                 }
                 listcl[numcl] = connfd;
                 numcl++;
                 msg_welcome(connfd);
-            } else if  (events[i].data.fd!=signal_fd) {
+            } else if (events[i].data.fd!=signal_fd) {
                 msg_handler(events[i].data.fd, listcl, numcl, epollfd);                    
             } else {
                 exit_handler(signal_fd,listcl,numcl,epollfd);
