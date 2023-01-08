@@ -24,8 +24,8 @@ int create_socket(int port_number) {
     server_addr.sin_port = htons(port_number);
     if ( inet_pton(AF_INET, SERVER, &server_addr.sin_addr.s_addr) == 0 )  err_exit("server");
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if(sockfd == -1)  err_exit("socket");
-    if(connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1)  err_exit("connect");
+    if (sockfd == -1)  err_exit("socket");
+    if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1)  err_exit("connect");
     return sockfd;
 }
  
@@ -58,11 +58,11 @@ int main(int argc, const char *argv[]) {
                 send(sock, sbuffer, strlen(sbuffer + 1),0);
             } else {
                 memset(rbuffer,0,BUF_SIZE);
-			    bytes_read = read(events[i].data.fd, rbuffer, BUF_SIZE);
-			    rbuffer[bytes_read] = '\0';
-			    printf("\t %s\n", rbuffer);
+                bytes_read = read(events[i].data.fd, rbuffer, BUF_SIZE);
+		rbuffer[bytes_read] = '\0';
+		printf("\t %s\n", rbuffer);
             }
-		}
 	}
-	return 0;
+    }
+    return 0;
 }    
