@@ -18,14 +18,15 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <syslog.h>
+#include <time.h>
 
 #define PORT 4444
 #define STR_MESSAGE "User # %d: %s"
 
 #define SIG_MESSAGE "\n     Ladies and gentlemen, this is your daemon speaking.\n     The server is affected by an external signal and goes to shutdown in 30 s\n\n"
 
-#define BDFILE "/home/Tatik/share/mychat/bd.txt"
-#define LOGFILE "/home/Tatik/share/mychat/log.txt"
+#define BDFILE "/home/tatik/Tatik/share/mychat/bd.txt"  // path_from_root for the good of the daemon
+#define LOGFILE "/home/tatik/Tatik/share/mychat/log.txt"
 
 #define MAX_EPOLL_EVENTS  30
 #define BUF_SIZE  1024
@@ -34,8 +35,6 @@
 #define CUR_VERSION "0.1"
 
 char* WELCOME = "@@60@#0.1@#SERV@#User@#0@#Connected.Verifying autorisation##";
-int refresh_list = 0;
-
 
 typedef struct {
     char delimiters[14];    /* for correct sizeof only */
@@ -102,13 +101,10 @@ void err_scream(const char *s) {
     return;
 }
 
-
 char* format_msg(msg *aptr, int i) {
     char *len_all;
     char *message_str = calloc (1,BUF_SIZE);
-    printf("DEBUG 0002 format_msg, %d\n", aptr[i].len);
     if( NULL != (len_all = malloc(5))) sprintf (len_all, "%d",aptr[i].len);
-    printf("DEBUG 0003 format_msg, %s\n", len_all);
     /* Glue message components into a string */
     strcat (message_str, "@@");
     strcat (message_str, len_all);
@@ -137,6 +133,26 @@ char* format_msg(msg *aptr, int i) {
     }
 }
 
+void make_send(msg* mess, usr* list, int k) {
+    char message [BUF_SIZE];
+    memset (message, 0, BUF_SIZE);
+    strcpy(message, format_msg (mess, k));
+    for (int i = 0; i < MAX_USERS; i++) {
+        if (strlen(list[i].login) && list[i].fd) {
+            send (list[i].fd, message, BUF_SIZE, 0);
+        }
+    }
+    return;
+}
+
+int len_count( msg* mess, int k) {
+    int msg_length =  strlen(mess[k].from) + strlen(mess[k].to)
+                   + strlen(mess[k].msg_itself) + strlen(mess[k].version) + 15;  //+1 ??
+    int tmp = len_int (msg_length);
+    mess[k].len = msg_length + tmp;
+    return (mess[k].len);
+}
+
 
 void refresh_online(msg* mess, usr* list) {
     char message [BUF_SIZE];
@@ -148,42 +164,38 @@ void refresh_online(msg* mess, usr* list) {
     strcpy(mess[2].to, "CHAT");
     memset (mess[2].msg_itself, 0, MAX_LEN * MAX_USERS + 1);
     strcat (mess[2].msg_itself, "USERS ONLINE");
-    strcat (mess[2].msg_itself, "\n");
+    strcat (mess[2].msg_itself, "\n  ");
 
     for (int i = 0; i < MAX_USERS; i++) {
          if (strlen(list[i].login)) {
              strcat (mess[2].msg_itself, list[i].login);
-             strcat (mess[2].msg_itself, "\n");
+             strcat (mess[2].msg_itself, "\n  ");
          }
     }
-    int msg_length =  strlen(mess[2].from) + strlen(mess[2].to)
-                   + strlen(mess[2].msg_itself) + strlen(mess[2].version) + 15;  //+1 ??
-    int tmp = len_int (msg_length);
-    mess[2].len = msg_length + tmp;
-    printf("DEBUG LIST AND msg_its %s \n", mess[2].msg_itself);
-    strcpy(message, format_msg (mess, 2));
-    for (int i = 0; i < MAX_USERS; i++) {
-        if (strlen(list[i].login)) {
-            send (list[i].fd, message, strlen(message) + 1, 0);
-            printf("ADD SENT %d %s %d %s \n", i, mess[2].msg_itself, list[i].fd, list[i].login);
-        }
-    }
+    mess[2].len = len_count(mess,2);
+    make_send(mess,list,2);
     return;
 }
 
-
-int remove_client(int array[], int n, int value, usr* list) { 
-    int j = 0; 
-    for (int i = 0; i < n; i++) {
-        if (array[i] != value) { 
-            array[j++] = array[i]; 
-        } else {
+void remove_client(int value, usr* list) { 
+    for (int i = 0; i < MAX_USERS; i++) {
+        if (list[i].fd == value) { 
             strcpy(list[i].login,"\0");
             list[i].fd = 0;
+            return;
         }
     }
-    n = j;
-    return(n); 
+    return; 
+}
+
+int announce_join (msg* mess, usr* list, int fd) {
+    strcpy (mess[1].msg_itself, mess[1].to);
+    strcpy (mess[1].to, "CHAT");
+    strcat (mess[1].msg_itself, " enters the chat");
+    mess[1].len = len_count(mess, 1);
+    strcpy(mess[1].message_str, format_msg (mess, 1));
+    sleep(1);
+    return(0);
 }
 
 int accept_user(msg *mess, int fd, usr* list) { 
@@ -202,20 +214,15 @@ int accept_user(msg *mess, int fd, usr* list) {
     if (strcmp(mess[1].version,mess[0].version)) {
         strcat (mess[1].msg_itself, " Please update your client version");
     }
-    int msg_length =  strlen(mess[1].from) + strlen(mess[1].to)
-                   + strlen(mess[1].msg_itself) + strlen(mess[1].version) + 15;  //+1 ??
-    int tmp = len_int (msg_length);
-    mess[1].len = msg_length + tmp;
+    mess[1].len = len_count(mess, 1);
 
-    printf("DEBUG ACCEPT %d  MSG %s \n", mess[1].fd, mess[1].msg_itself);
     strcpy(message, format_msg (mess, 1));
     send (mess[1].fd, message, strlen(message) + 1, 0);
-    printf("DEBUG ACCEPT SENT BEFORE LIST %s \n", message);
-    sleep(2);
+    sleep(1);
     refresh_online (mess, list);
-//    sleep(2);
-//    announce_join (mess,list,fd);
-    printf("DEBUG ACCEPT SENT %d LIST %s \n", mess[1].fd, message);
+    sleep(1);
+    announce_join (mess,list,fd);
+    make_send(mess,list,1);
     memset (message, 0, BUF_SIZE);
     return(1);
 }
@@ -233,7 +240,6 @@ int my_cmp (char* large, char* small) {
 void find_user (msg* mess, usr* list, int fd, int k ) {
     for (int i = 0; i < MAX_USERS; i++) {
         if (list[i].fd == fd) { 
-            printf("DEBUG find user %d  AND login %s \n", i, list[i].login);
             strcpy(mess[k].from, list[i].login);
             return;
         }
@@ -268,23 +274,11 @@ void refuse (msg* mess, usr* list, int fd ) {
     memset (mess[1].msg_itself, 0, sizeof(mess[1].msg_itself));
     strcat (mess[1].msg_itself, "Not found in BD, ");
     strcat (mess[1].msg_itself, mess[1].to);
-    int msg_length =  strlen(mess[1].from) + strlen(mess[1].to)
-                   + strlen(mess[1].msg_itself) + strlen(mess[1].version) + 15;  //+1 ??
-    int tmp = len_int (msg_length);
-    mess[1].len = msg_length + tmp;
-
-    printf("DEBUG REFUSE %d  AND msg_its %s \n", mess[1].fd, mess[1].msg_itself);
+    mess[1].len = len_count(mess,1);
     strcpy(message, format_msg (mess, 1));
     send (mess[1].fd, message, strlen(message) + 1, 0);
-    printf("DEBUG refuse sent %s\n", message);
     sleep(5);
-    for (int i = 0; i < MAX_USERS; i++) {
-        if (list[i].fd == fd) {
-            strcpy(list[i].login, "\0");
-            close(fd);
-            return;
-        }
-    }
+    remove_client (fd, list);
     err_scream ("User to throw off not found");
     return;
 }
@@ -297,12 +291,10 @@ int enter_handler (FILE* mybd, msg* mess, usr* list, int fd) {
     strcat (string2, " ");
     strcat (string2, mess[0].msg_itself);
     strcat (string2, "\0");
-    printf("DEBUG ENTER HANDLER %s\n", mess[0].msg_itself);
     while (!feof(mybd)) { 
         fgets(string, (2 * MAX_LEN + 1), mybd);
         acc = my_cmp (string, string2);
         if (acc) {
-//            accept_user(mess, fd, list);
             add_user(mess,list,fd);
             accept_user(mess, fd, list);
             free(string);
@@ -320,22 +312,46 @@ int enter_handler (FILE* mybd, msg* mess, usr* list, int fd) {
     return(0);
 }
 
-int chat_handler (msg* mess, usr* list, int fd) {
+int chat_handler (msg* mess, usr* list) {
+    time_t current_time;
+    time(&current_time);
     mess[1] = mess[0];
-    //find_user (mess, list, fd, 1);
     strcpy (mess[1].version, CUR_VERSION);
     strcpy (mess[1].to, "CHAT");
     memset (mess[1].msg_itself, 0, sizeof(mess[1].msg_itself));
     strcat (mess[1].msg_itself, mess[1].from);
     strcat (mess[1].msg_itself, ": ");
     strcat (mess[1].msg_itself, mess[0].msg_itself);
-    int msg_length =  strlen(mess[1].from) + strlen(mess[1].to)
-                   + strlen(mess[1].msg_itself) + strlen(mess[1].version) + 15;  //+1 ??
-    int tmp = len_int (msg_length);
-    mess[1].len = msg_length + tmp;
-    printf("DEBUG CHAT %d  AND msg_its %s \n", mess[1].fd, mess[1].msg_itself);
+    
+    char* tmp = ctime(&current_time);
+    FILE *mylog = fopen (LOGFILE, "a");
+    if (mylog == NULL) err_exit ("failed to open log file");
+    fprintf(mylog, "%.16s  %s\n ", tmp, mess[1].msg_itself ); 
+    fclose(mylog);
+    
+    mess[1].len = len_count(mess, 1);
     strcpy(mess[1].message_str, format_msg (mess, 1));
-    printf("DEBUG CHAT END string %s \n", mess[1].message_str);
+    return(0);
+}
+
+int immed_exit (msg* mess, usr* list, int fd) {
+    mess[1] = mess[0];
+    find_user (mess, list, fd, 1);
+    strcpy (mess[1].to, "CHAT");
+    strcpy (mess[1].msg_itself, mess[1].from);
+    if (mess[1].comm == 4) {
+        close(fd);
+        strcat (mess[1].msg_itself, " says BYE and leaves the chat");
+    } else {
+        mess[1].comm = 4;
+        strcat (mess[1].msg_itself, " leaves the chat and slams the door");
+    }
+    mess[1].len = len_count(mess,1);
+    strcpy(mess[1].message_str, format_msg (mess, 1));
+    sleep(1);
+    remove_client(fd, list);
+    refresh_online (mess, list);
+    sleep(1);
     return(0);
 }
 
@@ -353,7 +369,6 @@ int read_msg(char *rcv_msg, msg* msgptr1, int i) {
     char *start = NULL;
     char *fin = NULL;
     char *temp = NULL;
-    printf("DEBUG 2 received msg %s\n", rcv_msg);
     ctrl_len = strlen (rcv_msg);
     if (!ctrl_len) {
         err_scream ("incoiming nullstring");
@@ -368,10 +383,8 @@ int read_msg(char *rcv_msg, msg* msgptr1, int i) {
         temp = calloc (1, temp_len + 1);
         memcpy (temp, start + 2, temp_len);
         temp_len = atoi (temp);
-        printf("len diff is %d\n", ctrl_len - temp_len);
         if ((ctrl_len - temp_len) != 0) {
             err_scream ("incoiming length");
-            printf("error in receiving length %d\n", ctrl_len -temp_len);
             return 0;
         } else {
             msgptr1[i].len = temp_len;
@@ -409,7 +422,6 @@ int read_msg(char *rcv_msg, msg* msgptr1, int i) {
             temp = calloc (1, temp_len + 1);
             memcpy (temp, start, temp_len);
             strcpy(msgptr1[i].msg_itself, temp);
-            printf("DEBUG 3 received msg its %s\n", msgptr1[i].msg_itself);
 
             free(temp);
             return(1);
@@ -417,75 +429,88 @@ int read_msg(char *rcv_msg, msg* msgptr1, int i) {
     }
 }             
 
-int privat_handler() {
+int private_handler() {
 }
 
-int log_handler() {
+int log_handler(msg* mess) {
+    char message[BUF_SIZE];
+    memset (message, 0, BUF_SIZE);
+    char * line = malloc(BUF_SIZE);
+    mess[1] = mess[0];
+    strcpy (mess[1].version, CUR_VERSION);
+    strcpy (mess[1].to, mess[0].from);
+    printf("DEBUG 0001 in_log_create, %s\n", mess[1].from);
+
+    FILE *mylog = fopen (LOGFILE, "r");
+    if (mylog == NULL) err_exit ("failed to open log file");
+
+    while (fscanf(mylog, "%[^\n] ", line) != EOF)  {
+        strcpy (mess[1].msg_itself, line);
+        mess[1].len = len_count(mess, 1);
+        strcpy(message, format_msg (mess, 1));
+        printf("DEBUG cycle in_log_create, %s\n", message);
+        sleep(1);
+        send (mess[1].fd, message, BUF_SIZE, 0);
+    }
+    strcpy (mess[1].msg_itself, "/ENDLOG");
+    mess[1].len = len_count(mess, 1);
+    strcpy(message, format_msg (mess, 1));
+    printf("DEBUG afier cycle in_log_create, %s\n", message);
+
+    send (mess[1].fd, message, BUF_SIZE, 0);
+
+    fclose(mylog);
+    free(line);
+    return(0);
+
 }
 
-int msg_handler(int fd, int array[], int n, int epollfd, msg* mess, usr* list, FILE * mybd ) {
-    char buff[BUF_SIZE], message[BUF_SIZE];
+int msg_handler (int fd, int epollfd, msg* mess, usr* list, FILE * mybd) {
+    char buff[BUF_SIZE];
     memset(buff, 0, BUF_SIZE);
-    memset(message, 0, BUF_SIZE);
-//    if (refresh_list) {
-//        refresh_online(mess, list);
-//        refresh_list = 0;
-//    }
     int ret = read(fd, buff, BUF_SIZE);
-//        printf("%s\n", buff);
     if (ret == 0) {
         printf("client closed\n");
         close(fd);
         epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL);
-        n = remove_client(array, n, fd, list);
-        refresh_online(mess, list);
-        return(-1);
+        immed_exit(mess,list,fd);
+        goto sending;
     } else {
-        printf("DEBUG 1 receive %s\n", buff);
         read_msg(buff, mess, 0);
-        printf("DEBUG 3 before cmd %s\n", buff);
-
         int comd = mess[0].comm; 
-        printf("DEBUG CMD %d\n", comd);
 
         switch (comd) {
             case 0:
-                enter_handler(mybd,mess, list,fd);
-            //    refresh_online(mess, list);
+                enter_handler(mybd, mess, list, fd);
                 return(1);
             case 1:
-                chat_handler ( mess, list, n);
+                chat_handler (mess, list);
                 break;
 //        case 2:
 //            privat_handler();
 //            break;
-//        case 3:
-//            log_handler();
-//            break; 
+//            case 3:
+//                log_handler(mess);
+//                return(1); 
+            case 4:
+                immed_exit(mess, list, fd);
+                break; 
         }  
-        printf("DEBUG 4 after cmd %s\n", mess[1].message_str);
 
 //**********************
-        strcpy(message, mess[1].message_str); 
-        printf("DEBUG 5 after message reading fd and msg twice %d\t %s\t %s\n", fd, message, mess[1].message_str);
-      
-        for (int i = 0; i < n; i++) {
-            printf("cycle send, %d \t %d \t %s \n", array[i], n, message);
-           // if (list[i].fd != fd) {       /* fd 0 1 2 reserved by server itself */
-                send (list[i].fd, message, BUF_SIZE, 0);
-           // }
-        }  
+sending:
+        make_send(mess,list,1);
     }
     return(1);
 }
 
-int exit_handler(int fd, int array[], int n, int epollfd) {
+int exit_handler(int fd, usr* list, int epollfd) {
     char message[BUF_SIZE];
     memset(message, 0, BUF_SIZE);
     sprintf(message, SIG_MESSAGE);
-    for (int i = 0; i < n; i++) {
-        if (array[i] != fd) {
-            send(array[i], message, BUF_SIZE, 0);
+    for (int i = 0; i < MAX_USERS; i++) {
+        if (list[i].fd) {      
+            send (list[i].fd, message, BUF_SIZE, 0);
         }
     }
     sleep(30);
@@ -523,28 +548,28 @@ int create_socket(int port_number) {
 int main(int argc, const char *argv[]) {
     int portn = PORT; 
 //    mydaemon();    
-    FILE * mybd;
-    mybd = fopen ("bd.txt","r");
-    if (mybd == NULL) err_exit ("failed to open file");
+    FILE * mybd = fopen (BDFILE,"r");
+    if (mybd == NULL) err_exit ("failed to open database file");
+
     int sockfd = create_socket(portn);
     printf(" sockfd %d created \n", sockfd);
     int running = 1;
     setFdNonblock(sockfd);
-    char buff [BUF_SIZE];
-    int listcl [MAX_USERS];
+
     int numcl = 0;
-    
     int maxmsg = 4;
     int maxclient = MAX_USERS;
+    
     msg *mymessage = NULL;
     mymessage = calloc (maxmsg, sizeof *mymessage);
+
     usr *listusers = NULL;
     listusers = calloc (maxclient, sizeof *listusers);
     for (int i = 0; i < maxclient; i++) {
         strcpy(listusers[i].login, "\0");
         listusers[i].fd = 0;
-        listcl[i] = 0;
     }
+
     int epollfd = epoll_create1(0);
     if(epollfd == -1) {
         err_exit("epoll_create1");
@@ -592,19 +617,14 @@ int main(int argc, const char *argv[]) {
                 if(epoll_ctl(epollfd, EPOLL_CTL_ADD, connfd, &ev) == -1) {
                     err_exit("epoll_ctl2");
                 }
-                listcl[numcl] = connfd;
                 listusers[numcl].fd = connfd;
                 msg_welcome (connfd);
-                refresh_list = 1;
-                if (refresh_list) {
-                    refresh_online(mymessage, listusers);
-                    refresh_list = 0;
-                }
+                refresh_online(mymessage, listusers);
                 numcl++;
             } else if  (eventfd != signal_fd) {
-                msg_handler(eventfd, listcl, numcl, epollfd, mymessage, listusers, mybd);  // accepted sockets' event                  
+                msg_handler(eventfd, epollfd, mymessage, listusers, mybd);  // accepted sockets' event                  
             } else {
-                exit_handler(signal_fd,listcl,numcl,epollfd); // signal
+                exit_handler(signal_fd,listusers,epollfd); // signal
                 exit(0);
             }
         }
@@ -613,7 +633,7 @@ int main(int argc, const char *argv[]) {
     close(epollfd);
     free(mymessage);
     free(listusers);
-
+    fclose(mybd);
 //   syslog (LOG_NOTICE, "My daemon terminated.");
  //   closelog();
 
