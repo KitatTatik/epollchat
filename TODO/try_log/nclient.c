@@ -94,6 +94,8 @@ char* get_password(WINDOW * win, char * password, int max_len, int hidden)
 
 int format_msg(msg *ptr) {
     char *len_all;
+    int count = 0;
+recalc:
     if( NULL != (len_all = malloc(5))) sprintf (len_all, "%d", ptr->len);
     memset(ptr->message_str,0, strlen(ptr->message_str));
     strcat (ptr->message_str, "@@");
@@ -117,9 +119,16 @@ int format_msg(msg *ptr) {
     if (len == ptr->len) {
         return (0);
     } else {
+        count++;
+        if (count = 1) {
+            ptr->len = len;
+            goto recalc;
+        } else {
+            err_scream ("outgoing length");
         err_scream ("outgoing length");
         printf("real length %d  differs from counted value %d oops\n", len, ptr->len);
         return(1);
+        }
     }
 }
 
@@ -294,9 +303,25 @@ int out_msg_create (msg* mptr, char* login, char* string, int k) {
     strcpy(mptr->version,CUR_VERSION);
     strcpy(mptr->from, login);
     strcpy(mptr->to, "SERV");
-    mptr->comm = k;
     memset(mptr->msg_itself, 0, sizeof(mptr->msg_itself));
     strcpy(mptr->msg_itself, string);
+    mptr->comm = k;
+    if (k == 2) {
+        char *tmp = strtok (string,"/");
+        int count = 0;
+        while ( tmp != NULL ) {
+            count ++;
+            tmp = strtok (NULL, "/");
+            if (count == 1) {
+            strcpy(mptr->to, tmp);
+
+            }
+            if (count == 2) {
+               strcpy(mptr->msg_itself, tmp);
+
+            }
+        }
+    }
     msg_length =  strlen(mptr->from) + strlen(mptr->to)
                + strlen(mptr->msg_itself) + strlen(mptr->version) + 15;  //+1 ??
     tmp = len_int (msg_length);
@@ -411,8 +436,9 @@ int main(int argc, const char *argv[]) {
         werase(right);
         wattron(right,COLOR_PAIR(2));
         mvwprintw(right, lineright, 5, enter);
-        mvwprintw(right, maxy - 5, 1, "type /LOG to see log");
-        mvwprintw(right, maxy - 4, 1, "type /EXIT to exit ");
+        mvwprintw(right, maxy - 6, 1, "/PRIVAT/Login/ to privat");
+        mvwprintw(right, maxy - 5, 1, "/LOG to see log");
+        mvwprintw(right, maxy - 4, 1, "/EXIT to exit ");
         wattroff(right,COLOR_PAIR(2));
         box(right,'|','-');
         wrefresh(right);
@@ -436,8 +462,9 @@ int main(int argc, const char *argv[]) {
                     werase(right);
                     wattron(right,COLOR_PAIR(2));
                     mvwprintw(right, lineright, 5, enter);
-                    mvwprintw(right, maxy - 5, 1, "type /LOG to see log");
-                    mvwprintw(right, maxy - 4, 1, "type /EXIT to exit");
+                    mvwprintw(right, maxy - 6, 1, "/PRIVAT/Login/ to privat");
+                    mvwprintw(right, maxy - 5, 1, "/LOG to see log");
+                    mvwprintw(right, maxy - 4, 1, "/EXIT to exit ");
                   //  wrefresh(right);
                     wattroff(right,COLOR_PAIR(2));
                     box(right,'|','-');
@@ -468,7 +495,11 @@ int main(int argc, const char *argv[]) {
                         wattron(top,COLOR_PAIR(2));
                         mvwprintw(top, line, 8, enter);
                     } else {
+                        if ((strstr(ptr->msg_itself,"privat:") != NULL)) {
+                            wattron(top,COLOR_PAIR(1));
+                        }
                         mvwprintw(top, line, 3, enter);
+                        wattroff(top,COLOR_PAIR(1));
                     }
                     wattroff(top,COLOR_PAIR(2));
                     if(line != maxy/2 - 2) {
@@ -490,11 +521,12 @@ int main(int argc, const char *argv[]) {
                     wrefresh(low);
                    goto skipsend;
                 }
-
+                if (strstr( enter, "/PRIVAT")) com = 2;
                 if (!strcmp( enter, "/LOG")) com = 3;
                 if (!strcmp( enter, "/EXIT")) com = 4;
                 out_msg_create (ptr, login, enter, com);
                 format_msg(ptr);
+
                 strcpy(enter, ptr->message_str);
                 strcpy(sbuffer, enter);
                 send (sock, sbuffer, strlen(sbuffer) + 1, 0);

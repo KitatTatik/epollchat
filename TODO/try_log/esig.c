@@ -280,6 +280,18 @@ void find_user (msg* mess, usr* list, int fd, int k ) {
     return;
 }
 
+void private_user (msg* mess, usr* list, int k ) {
+    for (int i = 0; i < MAX_USERS; i++) {
+        if (!strcmp(list[i].login,mess[k].to)) {
+            mess[k].fd = list[i].fd;
+            return;
+        }
+    }
+    err_scream ("User not found in private");
+    return;
+}
+
+
 
 void add_user(msg* mess, usr* list, int fd ) { 
     int found = 0;
@@ -475,7 +487,17 @@ int read_msg(char *rcv_msg, msg* msgptr1, int i) {
 }             
 
 
-int private_handler() {
+int private_handler(msg* mess, usr* list) {
+    mess[4] = mess[0];
+    private_user (mess, list, 4);
+    memset (mess[4].msg_itself, 0, sizeof(mess[4].msg_itself));
+    strcat (mess[4].msg_itself, mess[4].from);
+    strcat (mess[4].msg_itself, ": privat: ");
+    strcat (mess[4].msg_itself, mess[0].msg_itself);
+    mess[4].len = len_count(mess, 4);
+    strcpy(mess[4].message_str, format_msg (mess, 4));
+    send (mess[4].fd, mess[4].message_str, strlen(mess[4].message_str) + 1, 0);
+    return(0);
 }
 
 
@@ -530,18 +552,18 @@ int msg_handler (int fd, int epollfd, msg* mess, usr* list, FILE * mybd) {
     
         switch (comd) {
             case 0:
-                enter_handler(mybd, mess, list, fd);
+                enter_handler (mybd, mess, list, fd);
                 return(1);
             case 1:
                 chat_handler (mess, list);
                 break;
-//        case 2:
-//            privat_handler();
-//            break;
+            case 2:
+               private_handler (mess,list);
+               return(1);
             case 3:
                 mess[3].fd = mess[0].fd;
                 strcpy (mess[3].to, mess[0].from);
-                log_handler(mess);
+                log_handler (mess);
                 return(1); 
             case 4:
                 immed_exit(mess, list, fd);
@@ -607,7 +629,7 @@ int main(int argc, const char *argv[]) {
     setFdNonblock(sockfd);
 
     int numcl = 0;
-    int maxmsg = 4;
+    int maxmsg = 5;
     int maxclient = MAX_USERS;
     
     msg *mymessage = NULL;
