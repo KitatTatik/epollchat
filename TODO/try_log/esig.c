@@ -25,9 +25,9 @@
 #define BDFILE "/home/tatik/Tatik/share/mychat/bd.txt"  // path_from_root for the good of the daemon
 #define LOGFILE "/home/tatik/Tatik/share/mychat/log.txt"
 
-#define MAX_EPOLL_EVENTS  30
-#define BUF_SIZE  1024
-#define MAX_USERS  10
+#define MAX_EPOLL_EVENTS 30
+#define BUF_SIZE 1024
+#define MAX_USERS 10
 #define MAX_LEN 10
 #define CUR_VERSION "0.2"
 
@@ -53,6 +53,7 @@ typedef struct {
     int fd;
 } usr;
 
+/**************************************************************/
 
 static void mydaemon() {
     pid_t pid;
@@ -77,6 +78,7 @@ static void mydaemon() {
     syslog (LOG_NOTICE, "My epoll daemon started.");
 }
 
+
 int len_int(int number) {
     int result = 0;
     while (number != 0) {
@@ -86,30 +88,33 @@ int len_int(int number) {
     return result;
 }
 
+
 void setFdNonblock(int fd) {
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
 }
 
-long int filesize( FILE *fp )
-  {
+
+long int filesize( FILE *fp) {
     long int save_pos, size_of_file;
- 
     save_pos = ftell( fp );
     fseek( fp, 0L, SEEK_END );
     size_of_file = ftell( fp );
     fseek( fp, save_pos, SEEK_SET );
     return( size_of_file );
-  }
+}
+
 
 void err_exit(const char *s) {
     printf("error: %s\n",s);
     exit(0);
 }
 
+
 void err_scream(const char *s) {
     printf("error: %s\n",s);
     return;
 }
+
 
 char* format_msg(msg *aptr, int i) {
     int count = 0;
@@ -152,6 +157,7 @@ recalc:
     }
 }
 
+
 void make_send(msg* mess, usr* list, int k) {
     char message [BUF_SIZE];
     memset (message, 0, BUF_SIZE);
@@ -164,6 +170,7 @@ void make_send(msg* mess, usr* list, int k) {
     return;
 }
 
+
 int len_count( msg* mess, int k) {
     int msg_length =  strlen(mess[k].from) + strlen(mess[k].to)
                    + strlen(mess[k].msg_itself) + strlen(mess[k].version) + 15;  //+1 ??
@@ -171,6 +178,7 @@ int len_count( msg* mess, int k) {
     mess[k].len = msg_length + tmp;
     return (mess[k].len);
 }
+
 
 
 void refresh_online(msg* mess, usr* list) {
@@ -196,6 +204,7 @@ void refresh_online(msg* mess, usr* list) {
     return;
 }
 
+
 void remove_client(int value, usr* list) { 
     for (int i = 0; i < MAX_USERS; i++) {
         if (list[i].fd == value) { 
@@ -207,6 +216,7 @@ void remove_client(int value, usr* list) {
     return; 
 }
 
+
 int announce_join (msg* mess, usr* list, int fd) {
     strcpy (mess[1].msg_itself, mess[1].to);
     strcpy (mess[1].to, "CHAT");
@@ -216,6 +226,7 @@ int announce_join (msg* mess, usr* list, int fd) {
     sleep(1);
     return(0);
 }
+
 
 int accept_user(msg *mess, int fd, usr* list) { 
     char message[BUF_SIZE];
@@ -246,6 +257,7 @@ int accept_user(msg *mess, int fd, usr* list) {
     return(1);
 }
 
+
 int my_cmp (char* large, char* small) {
     char* tmp = NULL;
     tmp = strstr(large,small);
@@ -255,6 +267,7 @@ int my_cmp (char* large, char* small) {
         return(0);
     }
 }
+
 
 void find_user (msg* mess, usr* list, int fd, int k ) {
     for (int i = 0; i < MAX_USERS; i++) {
@@ -266,6 +279,7 @@ void find_user (msg* mess, usr* list, int fd, int k ) {
     err_scream ("User not found in find");
     return;
 }
+
 
 void add_user(msg* mess, usr* list, int fd ) { 
     int found = 0;
@@ -280,6 +294,7 @@ void add_user(msg* mess, usr* list, int fd ) {
     } 
     return;
 }
+
 
 void refuse (msg* mess, usr* list, int fd ) {
     char message [BUF_SIZE];
@@ -301,6 +316,7 @@ void refuse (msg* mess, usr* list, int fd ) {
     err_scream ("User to throw off not found");
     return;
 }
+
 
 int enter_handler (FILE* mybd, msg* mess, usr* list, int fd) {
     int acc = 0;
@@ -331,6 +347,7 @@ int enter_handler (FILE* mybd, msg* mess, usr* list, int fd) {
     return(0);
 }
 
+
 int chat_handler (msg* mess, usr* list) {
     time_t current_time;
     time(&current_time);
@@ -359,6 +376,7 @@ int chat_handler (msg* mess, usr* list) {
     return(0);
 }
 
+
 int immed_exit (msg* mess, usr* list, int fd) {
     mess[1] = mess[0];
     find_user (mess, list, fd, 1);
@@ -380,12 +398,14 @@ int immed_exit (msg* mess, usr* list, int fd) {
     return(0);
 }
 
+
 int msg_welcome(int fd) {
     char  message[BUF_SIZE];
     memset(message, 0, BUF_SIZE);
     sprintf(message, WELCOME, fd);
     return(1);
 }
+
 
 int read_msg(char *rcv_msg, msg* msgptr1, int i) {
 /*  tears the received string apart*/
@@ -454,8 +474,10 @@ int read_msg(char *rcv_msg, msg* msgptr1, int i) {
     }
 }             
 
+
 int private_handler() {
 }
+
 
 int log_handler(msg* mess) {
     char message[BUF_SIZE];
@@ -490,6 +512,7 @@ int log_handler(msg* mess) {
 
 }
 
+
 int msg_handler (int fd, int epollfd, msg* mess, usr* list, FILE * mybd) {
     char buff[BUF_SIZE];
     memset(buff, 0, BUF_SIZE);
@@ -502,8 +525,9 @@ int msg_handler (int fd, int epollfd, msg* mess, usr* list, FILE * mybd) {
         goto sending;
     } else {
         read_msg(buff, mess, 0);
+        mess[0].fd = fd;
         int comd = mess[0].comm; 
-
+    
         switch (comd) {
             case 0:
                 enter_handler(mybd, mess, list, fd);
@@ -531,6 +555,7 @@ sending:
     return(1);
 }
 
+
 int exit_handler(int fd, usr* list, int epollfd) {
     char message[BUF_SIZE];
     memset(message, 0, BUF_SIZE);
@@ -541,13 +566,9 @@ int exit_handler(int fd, usr* list, int epollfd) {
         }
     }
     sleep(30);
-/*        for (int i=0; i < n; i++) {
-               close(array[i]);
-               epoll_ctl(epollfd, EPOLL_CTL_DEL, array[i], NULL);
-        }
-*/
     return(1);
 }
+
 
 int create_socket(int port_number) {
     struct sockaddr_in server_addr;
@@ -571,6 +592,8 @@ int create_socket(int port_number) {
     }
     return sockfd;
 }
+
+/***********************************************/
  
 int main(int argc, const char *argv[]) {
     int portn = PORT; 
