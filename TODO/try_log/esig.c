@@ -78,7 +78,6 @@ static void mydaemon() {
     syslog (LOG_NOTICE, "My epoll daemon started.");
 }
 
-
 int len_int(int number) {
     int result = 0;
     while (number != 0) {
@@ -88,11 +87,9 @@ int len_int(int number) {
     return result;
 }
 
-
 void setFdNonblock(int fd) {
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
 }
-
 
 long int filesize( FILE *fp) {
     long int save_pos, size_of_file;
@@ -103,18 +100,15 @@ long int filesize( FILE *fp) {
     return( size_of_file );
 }
 
-
 void err_exit(const char *s) {
     printf("error: %s\n",s);
     exit(0);
 }
 
-
 void err_scream(const char *s) {
     printf("error: %s\n",s);
     return;
 }
-
 
 char* format_msg(msg *aptr, int i) {
     int count = 0;
@@ -157,7 +151,6 @@ recalc:
     }
 }
 
-
 void make_send(msg* mess, usr* list, int k) {
     char message [BUF_SIZE];
     memset (message, 0, BUF_SIZE);
@@ -170,7 +163,6 @@ void make_send(msg* mess, usr* list, int k) {
     return;
 }
 
-
 int len_count( msg* mess, int k) {
     int msg_length =  strlen(mess[k].from) + strlen(mess[k].to)
                    + strlen(mess[k].msg_itself) + strlen(mess[k].version) + 15;  //+1 ??
@@ -178,8 +170,6 @@ int len_count( msg* mess, int k) {
     mess[k].len = msg_length + tmp;
     return (mess[k].len);
 }
-
-
 
 void refresh_online(msg* mess, usr* list) {
     char message [BUF_SIZE];
@@ -217,18 +207,18 @@ void remove_client(int value, usr* list) {
 }
 
 
-int announce_join (msg* mess, usr* list, int fd) {
+void announce_join (msg* mess, usr* list, int fd) {
     strcpy (mess[1].msg_itself, mess[1].to);
     strcpy (mess[1].to, "CHAT");
     strcat (mess[1].msg_itself, " enters the chat");
     mess[1].len = len_count(mess, 1);
     strcpy(mess[1].message_str, format_msg (mess, 1));
     sleep(1);
-    return(0);
+    return;
 }
 
 
-int accept_user(msg *mess, int fd, usr* list) { 
+void accept_user(msg *mess, int fd, usr* list) { 
     char message[BUF_SIZE];
     memset (message, 0, BUF_SIZE);
     mess[1].len = 0;
@@ -254,7 +244,7 @@ int accept_user(msg *mess, int fd, usr* list) {
     announce_join (mess,list,fd);
     make_send(mess,list,1);
     memset (message, 0, BUF_SIZE);
-    return(1);
+    return;
 }
 
 
@@ -291,8 +281,6 @@ void private_user (msg* mess, usr* list, int k ) {
     return;
 }
 
-
-
 void add_user(msg* mess, usr* list, int fd ) { 
     int found = 0;
     for (int i = 0; i < MAX_USERS; i++) {
@@ -306,7 +294,6 @@ void add_user(msg* mess, usr* list, int fd ) {
     } 
     return;
 }
-
 
 void refuse (msg* mess, usr* list, int fd ) {
     char message [BUF_SIZE];
@@ -329,8 +316,7 @@ void refuse (msg* mess, usr* list, int fd ) {
     return;
 }
 
-
-int enter_handler (FILE* mybd, msg* mess, usr* list, int fd) {
+void enter_handler (FILE* mybd, msg* mess, usr* list, int fd) {
     int acc = 0;
     char * string = calloc(1, 2 * MAX_LEN +1);
     char * string2 = calloc(1, 2 * MAX_LEN +1);
@@ -347,7 +333,7 @@ int enter_handler (FILE* mybd, msg* mess, usr* list, int fd) {
             free(string);
             free(string2);
             rewind(mybd);
-            return(1);
+            return;
         } 
     } 
     if (!acc) {
@@ -356,11 +342,10 @@ int enter_handler (FILE* mybd, msg* mess, usr* list, int fd) {
     free(string);
     free(string2);
     rewind(mybd);
-    return(0);
+    return;
 }
 
-
-int chat_handler (msg* mess, usr* list) {
+void chat_handler (msg* mess, usr* list) {
     time_t current_time;
     time(&current_time);
     mess[1] = mess[0];
@@ -385,11 +370,11 @@ int chat_handler (msg* mess, usr* list) {
     
     mess[1].len = len_count(mess, 1);
     strcpy(mess[1].message_str, format_msg (mess, 1));
-    return(0);
+    return;
 }
 
 
-int immed_exit (msg* mess, usr* list, int fd) {
+void immed_exit (msg* mess, usr* list, int fd) {
     mess[1] = mess[0];
     find_user (mess, list, fd, 1);
     strcpy (mess[1].to, "CHAT");
@@ -407,15 +392,15 @@ int immed_exit (msg* mess, usr* list, int fd) {
     remove_client(fd, list);
     refresh_online (mess, list);
     sleep(1);
-    return(0);
+    return;
 }
 
 
-int msg_welcome(int fd) {
+void msg_welcome(int fd) {
     char  message[BUF_SIZE];
     memset(message, 0, BUF_SIZE);
     sprintf(message, WELCOME, fd);
-    return(1);
+    return;
 }
 
 
@@ -487,7 +472,7 @@ int read_msg(char *rcv_msg, msg* msgptr1, int i) {
 }             
 
 
-int private_handler(msg* mess, usr* list) {
+void private_handler(msg* mess, usr* list) {
     mess[4] = mess[0];
     private_user (mess, list, 4);
     memset (mess[4].msg_itself, 0, sizeof(mess[4].msg_itself));
@@ -497,11 +482,11 @@ int private_handler(msg* mess, usr* list) {
     mess[4].len = len_count(mess, 4);
     strcpy(mess[4].message_str, format_msg (mess, 4));
     send (mess[4].fd, mess[4].message_str, strlen(mess[4].message_str) + 1, 0);
-    return(0);
+    return;
 }
 
 
-int log_handler(msg* mess) {
+void log_handler(msg* mess) {
     char message[BUF_SIZE];
     memset (message, 0, BUF_SIZE);
     char * line = malloc(BUF_SIZE);
@@ -530,12 +515,11 @@ int log_handler(msg* mess) {
 
     fclose(mylog);
     free(line);
-    return(0);
-
+    return;
 }
 
 
-int msg_handler (int fd, int epollfd, msg* mess, usr* list, FILE * mybd) {
+void msg_handler (int fd, int epollfd, msg* mess, usr* list, FILE * mybd) {
     char buff[BUF_SIZE];
     memset(buff, 0, BUF_SIZE);
     int ret = read(fd, buff, BUF_SIZE);
@@ -553,18 +537,18 @@ int msg_handler (int fd, int epollfd, msg* mess, usr* list, FILE * mybd) {
         switch (comd) {
             case 0:
                 enter_handler (mybd, mess, list, fd);
-                return(1);
+                return;
             case 1:
                 chat_handler (mess, list);
                 break;
             case 2:
                private_handler (mess,list);
-               return(1);
+               return;
             case 3:
                 mess[3].fd = mess[0].fd;
                 strcpy (mess[3].to, mess[0].from);
                 log_handler (mess);
-                return(1); 
+                return; 
             case 4:
                 immed_exit(mess, list, fd);
                 break; 
@@ -574,11 +558,11 @@ int msg_handler (int fd, int epollfd, msg* mess, usr* list, FILE * mybd) {
 sending:
         make_send(mess,list,1);
     }
-    return(1);
+    return;
 }
 
 
-int exit_handler(int fd, usr* list, int epollfd) {
+void exit_handler(int fd, usr* list, int epollfd) {
     char message[BUF_SIZE];
     memset(message, 0, BUF_SIZE);
     strcpy(message, SIG_MESSAGE);
@@ -588,9 +572,8 @@ int exit_handler(int fd, usr* list, int epollfd) {
         }
     }
     sleep(30);
-    return(1);
+    return;
 }
-
 
 int create_socket(int port_number) {
     struct sockaddr_in server_addr;

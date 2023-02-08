@@ -1,3 +1,5 @@
+// gcc nclient.c -o ncl -lmenu -lncurses
+
 #include <stdlib.h>
 #include <curses.h>
 #include <menu.h>
@@ -11,10 +13,10 @@
 
 #define BUF_SIZE 1024
 #define PORT 4444
-#define MAX_EVENTS 16
+#define MAX_EVENTS 10
 #define SERVER "127.0.0.4"
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
-#define CTRLD   4
+#define CTRLD 4
 #define MAX_LEN 10
 #define CUR_VERSION "0.2"
 
@@ -65,8 +67,7 @@ int create_socket(int port_number) {
     return sockfd;
 }
 
-char* get_password(WINDOW * win, char * password, int max_len, int hidden)
-{
+char* get_password(WINDOW * win, char * password, int max_len, int hidden) {
     int i = 0;
     int ch;
     while (((ch = wgetch(win)) != 10) && (i < max_len-1)) {
@@ -256,11 +257,11 @@ int login_screen (char *login, char *password) {
     wprintw(wnd, "PASSWORD READ");
     wrefresh(wnd);
     delwin(wnd);
-
-	while((c = getch()) != KEY_F(1))
-	{   switch(c)
-	    {	case KEY_LEFT:
-				menu_driver(my_menu, REQ_LEFT_ITEM);
+            
+	while((c = getch()) != KEY_F(1)) {
+	    switch(c) {
+	        case KEY_LEFT:
+                menu_driver(my_menu, REQ_LEFT_ITEM);
 				break;
 		    case KEY_RIGHT:
 				menu_driver(my_menu, REQ_RIGHT_ITEM);
@@ -285,7 +286,7 @@ int login_screen (char *login, char *password) {
                 pos_menu_cursor(my_menu);
                 break;
 		}
-               wrefresh(my_menu_win);
+        wrefresh(my_menu_win);
 	}	
     wrefresh(my_menu_win);
     unpost_menu(my_menu);
@@ -313,12 +314,10 @@ int out_msg_create (msg* mptr, char* login, char* string, int k) {
             count ++;
             tmp = strtok (NULL, "/");
             if (count == 1) {
-            strcpy(mptr->to, tmp);
-
+                strcpy(mptr->to, tmp);
             }
             if (count == 2) {
                strcpy(mptr->msg_itself, tmp);
-
             }
         }
     }
@@ -329,7 +328,6 @@ int out_msg_create (msg* mptr, char* login, char* string, int k) {
 
     return(0);
 }
-
 
 int main(int argc, const char *argv[]) {
     int port =  PORT;
@@ -377,7 +375,6 @@ int main(int argc, const char *argv[]) {
     scrollok(bottom,TRUE);
 
     box(top,'|','=');
-//    box(bottom,'|',' ');
     box(right,'|','-');
     box(low,'|','=');
 
@@ -411,7 +408,7 @@ int main(int argc, const char *argv[]) {
     rbuffer[bytes_read] = '\0';
     read_msg(rbuffer, ptr);
     if (strstr(ptr->msg_itself,"Not found") != NULL) {
-        printf("%s\n", "Please check you autorising info and rerun your client");
+        printf("\n%s\n", "Please check you autorising info and rerun your client");
         sleep(2);
         endwin();
         return -1;
@@ -436,9 +433,12 @@ int main(int argc, const char *argv[]) {
         werase(right);
         wattron(right,COLOR_PAIR(2));
         mvwprintw(right, lineright, 5, enter);
-        mvwprintw(right, maxy - 6, 1, "/PRIVAT/Login/ to privat");
-        mvwprintw(right, maxy - 5, 1, "/LOG to see log");
-        mvwprintw(right, maxy - 4, 1, "/EXIT to exit ");
+        mvwprintw(right, maxy - 8, 1, "   TYPE");
+        mvwprintw(right, maxy - 7, 1, "/PRIVAT/Login/text");
+        mvwprintw(right, maxy - 6, 1, "to send private msg;");
+        mvwprintw(right, maxy - 5, 1, "/LOG to see log;");
+        mvwprintw(right, maxy - 4, 1, "/CLEARLOG to clear;");
+        mvwprintw(right, maxy - 3, 1, "/EXIT to exit;");
         wattroff(right,COLOR_PAIR(2));
         box(right,'|','-');
         wrefresh(right);
@@ -462,10 +462,12 @@ int main(int argc, const char *argv[]) {
                     werase(right);
                     wattron(right,COLOR_PAIR(2));
                     mvwprintw(right, lineright, 5, enter);
-                    mvwprintw(right, maxy - 6, 1, "/PRIVAT/Login/ to privat");
-                    mvwprintw(right, maxy - 5, 1, "/LOG to see log");
-                    mvwprintw(right, maxy - 4, 1, "/EXIT to exit ");
-                  //  wrefresh(right);
+                    mvwprintw(right, maxy - 8, 1, "   TYPE");
+                    mvwprintw(right, maxy - 7, 1, "/PRIVAT/Login/text");
+                    mvwprintw(right, maxy - 6, 1, "to send private msg;");
+                    mvwprintw(right, maxy - 5, 1, "/LOG to see log;");
+                    mvwprintw(right, maxy - 4, 1, "/CLEARLOG to clear;");
+                    mvwprintw(right, maxy - 3, 1, "/EXIT to exit;");
                     wattroff(right,COLOR_PAIR(2));
                     box(right,'|','-');
                     wrefresh(right);
@@ -491,7 +493,7 @@ int main(int argc, const char *argv[]) {
                     wrefresh(bottom);
                 } else {
                     if ((strstr(ptr->msg_itself,"s the chat") != NULL)
-                       || (strstr(ptr->msg_itself,"your daemon speaking") != NULL)) {
+                        || (strstr(ptr->msg_itself,"your daemon speaking") != NULL)) {
                         wattron(top,COLOR_PAIR(2));
                         mvwprintw(top, line, 8, enter);
                     } else {
@@ -519,7 +521,7 @@ int main(int argc, const char *argv[]) {
                     box(low,'|','=');
                     linelow = 1;
                     wrefresh(low);
-                   goto skipsend;
+                    goto skipsend;
                 }
                 if (strstr( enter, "/PRIVAT")) com = 2;
                 if (!strcmp( enter, "/LOG")) com = 3;
@@ -532,10 +534,11 @@ int main(int argc, const char *argv[]) {
                 send (sock, sbuffer, strlen(sbuffer) + 1, 0);
 skipsend:
                 memset(enter,0, bsize);
-                if(input != maxy/4 - 2)
+                if(input != maxy/4 - 2) {
                     input++;
-                else
+                } else {
                     scroll(bottom);
+                }
                 wrefresh(top);
                 wrefresh(bottom);
                 wrefresh(right);
