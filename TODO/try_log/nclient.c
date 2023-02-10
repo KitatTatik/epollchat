@@ -329,6 +329,17 @@ int out_msg_create (msg* mptr, char* login, char* string, int k) {
     return(0);
 }
 
+void instructions(WINDOW* right, int maxy) {
+    mvwprintw(right, maxy - 8, 1, "   TYPE");
+    mvwprintw(right, maxy - 7, 1, "/PRIVAT/Login/text");
+    mvwprintw(right, maxy - 6, 1, "to send private msg;");
+    mvwprintw(right, maxy - 5, 1, "/LOG to see log;");
+    mvwprintw(right, maxy - 4, 1, "  TO CLEAR:");
+    mvwprintw(right, maxy - 3, 1, "/CLEARLOG for log win;");
+    mvwprintw(right, maxy - 2, 1, "/CLEAR for user win;");
+    mvwprintw(right, maxy - 1, 1, "/EXIT to exit;");
+}
+
 int main(int argc, const char *argv[]) {
     int port =  PORT;
     msg* ptr = (msg*) calloc (1, BUF_SIZE * 2);
@@ -433,12 +444,7 @@ int main(int argc, const char *argv[]) {
         werase(right);
         wattron(right,COLOR_PAIR(2));
         mvwprintw(right, lineright, 5, enter);
-        mvwprintw(right, maxy - 8, 1, "   TYPE");
-        mvwprintw(right, maxy - 7, 1, "/PRIVAT/Login/text");
-        mvwprintw(right, maxy - 6, 1, "to send private msg;");
-        mvwprintw(right, maxy - 5, 1, "/LOG to see log;");
-        mvwprintw(right, maxy - 4, 1, "/CLEARLOG to clear;");
-        mvwprintw(right, maxy - 3, 1, "/EXIT to exit;");
+        instructions(right, maxy);
         wattroff(right,COLOR_PAIR(2));
         box(right,'|','-');
         wrefresh(right);
@@ -462,12 +468,7 @@ int main(int argc, const char *argv[]) {
                     werase(right);
                     wattron(right,COLOR_PAIR(2));
                     mvwprintw(right, lineright, 5, enter);
-                    mvwprintw(right, maxy - 8, 1, "   TYPE");
-                    mvwprintw(right, maxy - 7, 1, "/PRIVAT/Login/text");
-                    mvwprintw(right, maxy - 6, 1, "to send private msg;");
-                    mvwprintw(right, maxy - 5, 1, "/LOG to see log;");
-                    mvwprintw(right, maxy - 4, 1, "/CLEARLOG to clear;");
-                    mvwprintw(right, maxy - 3, 1, "/EXIT to exit;");
+                    instructions(right, maxy);
                     wattroff(right,COLOR_PAIR(2));
                     box(right,'|','-');
                     wrefresh(right);
@@ -523,6 +524,14 @@ int main(int argc, const char *argv[]) {
                     wrefresh(low);
                     goto skipsend;
                 }
+                if (!strcmp( enter, "/CLEAR")) {
+                    werase(bottom);
+                    box(bottom,' ',' ');
+                    input = 1;
+                    wrefresh(bottom);
+                    goto skipsend;
+                }
+
                 if (strstr( enter, "/PRIVAT")) com = 2;
                 if (!strcmp( enter, "/LOG")) com = 3;
                 if (!strcmp( enter, "/EXIT")) com = 4;
