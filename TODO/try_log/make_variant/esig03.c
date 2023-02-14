@@ -241,7 +241,7 @@ void register_handler (msg* mess, usr* list, int fd) {
     }
     if (!found) {
         freopen(BDFILE, "a", mybd);
-        fprintf(mybd, "\n%s", string3);
+        fprintf(mybd, "%s\n", string3);
         add_user(mess,list,fd);
         accept_user(mess, fd, list);
     }
