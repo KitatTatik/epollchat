@@ -13,8 +13,8 @@
 #define MAX_USERS 10
 #define CUR_VERSION "0.3"
 
-char* WELCOME = "@@60@#0.2@#SERV@#User@#0@#Connected.Verifying autorisation##";
-char* SIG_MESSAGE = "@@154@#0.2@#SERV@#USER@#0@#Ladies and gentlemen, this is your daemon speaking. The server is affected by an external signal and goes to shutdown in 30 s##";
+char* WELCOME = "@@60@#0.3@#SERV@#User@#0@#Connected.Verifying autorisation##";
+char* SIG_MESSAGE = "@@154@#0.3@#SERV@#USER@#0@#Ladies and gentlemen, this is your daemon speaking. The server is affected by an external signal and goes to shutdown in 30 s##";
 
 
 typedef struct {
